@@ -1,39 +1,34 @@
 package day7
-
-import scala.annotation.tailrec
 import scala.io.Source
 
 object Day7 extends App {
   val source = Source.fromFile("src/day7/input.txt")
   val lines = source.getLines.toSeq
 
-  type BagLookUp = Map[Bag, List[(Int, Bag)]]
-  case class Bag(color: String) {
-    def canHold(bag: Bag)(implicit bags: BagLookUp): Boolean =
-      bags(this).exists { case (_, b) => b == bag || b.canHold(bag) }
+  val getColor = "(.*) bags?".r
+  val getNumColor = "(\\d*) (.*) bags?".r
 
-    def bagSize(implicit bags: BagLookUp): Int =
-      bags(this).map { case (num, b) => (num * b.bagSize) + num }.sum
-  }
-
-  val bagRegex = "(.*) bags?".r
-  val bagsRegex = "(\\d*) (.*) bags?".r
-  implicit val bags: BagLookUp = lines.map {
-    case s"${bagRegex(outerBag)} contain $innerBags." =>
-      val innerBagCounts = innerBags match {
+  val bags = lines.map {
+    case s"${getColor(outerColor)} contain $innerBags." =>
+      val innerCountColors = innerBags match {
         case "no other bags" => Nil
         case list => list
           .split(", ")
-          .map { case bagsRegex(num, innerBag) => (num.toInt, Bag(innerBag)) }
+          .map { case getNumColor(num, color) => (num.toInt, color) }
           .toList
       }
-      Bag(outerBag) -> innerBagCounts
+      outerColor -> innerCountColors
   }.toMap
 
-  val shinyGold = Bag("shiny gold")
-  val part1 = bags.keySet.count(_.canHold(shinyGold))
+  def canHold(bag1: String, bag2: String): Boolean =
+    bags(bag1).exists { case (_, b) => b == bag2 || canHold(b, bag2) }
+
+  def bagSize(bag: String): Int =
+    bags(bag).map { case (num, b) => (num * bagSize(b)) + num }.sum
+
+  val part1 = bags.keySet.count(canHold(_, "shiny gold"))
   println(s"part1=$part1")
 
-  val part2 = shinyGold.bagSize
+  val part2 = bagSize("shiny gold")
   println(s"part2=$part2")
 }
