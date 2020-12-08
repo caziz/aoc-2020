@@ -7,36 +7,37 @@ object Day8 extends App {
   val instrs = source.getLines.map { case s"$instr $num" => (instr, num.toInt) }.toSeq
 
   case class State(mem: Seq[(String, Int)],
-                   pc: Int = 0,
+                   pic: Int = 0,
                    acc: Int = 0,
                    executed: Set[Int] = Set(),
                    repeated: Boolean = false,
                    halted: Boolean = false) {
     @tailrec
     final def execute: State =
-      if (pc == mem.size)
+      if (pic == mem.size)
         copy(halted = true)
-      else if (executed contains pc)
+      else if (executed contains pic)
         copy(repeated = true)
-      else
-        (mem(pc) match {
-          case ("acc", n) => copy(pc = pc + 1, acc = acc + n)
-          case ("jmp", n) => copy(pc = pc + n)
-          case ("nop", _) => copy(pc = pc + 1)
-        }).copy(executed = executed + pc)
-          .execute
+      else {
+        val default = copy(pic = pic + 1, executed = executed + pic)
+        val state = mem(pic) match {
+          case ("acc", n) => default.copy(acc = acc + n)
+          case ("jmp", n) => default.copy(pic = pic + n)
+          case ("nop", _) => default
+        }
+        state.execute
+      }
   }
 
   val part1 = State(instrs).execute.acc
   println(s"part1=$part1")
 
-  val part2 = instrs.map {
-    case ("jmp", n) => ("nop", n)
-    case ("nop", n) => ("jmp", n)
-    case other => other
-  }.zipWithIndex.map {
+  val instrsList = instrs.zipWithIndex.collect {
+    case (("jmp", n), i) => (("nop", n), i)
+    case (("nop", n), i) => (("jmp", n), i)
+  }.map {
     case (instr, i) => instrs.take(i) ++ Seq(instr) ++ instrs.drop(i + 1)
-  }.map(State(_).execute).find(_.halted).get.acc
-
+  }
+  val part2 = instrsList.map(State(_).execute).find(_.halted).get.acc
   println(s"part2=$part2")
 }
